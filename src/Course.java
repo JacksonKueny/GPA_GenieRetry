@@ -1,166 +1,171 @@
-import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Scanner;
 
 public class Course {
     private String name;
-    private int num_of_categories;
-    private Category[] courseCategories;
-    private double courseGrade;
+    private ArrayList<Category> categories = new ArrayList<>();
 
-    public void setCourseName(String courseName) {
-        this.name = courseName;
-    }
-
-    public void setNumOfCategories(int numOfCategories) {
-        this.num_of_categories = numOfCategories;
-        this.courseCategories = new Category[numOfCategories]; // Initialize the array with the number of categories
-    }
-
-    public double calculateCourseGrade() {
-        for(int i = 0; i < num_of_categories; i++) {
-            if(courseCategories[i] != null) {
-                courseGrade += courseCategories[i].calculateCategoryGrade() * (courseCategories[i].getCategoryWeight() / 100);
-            }
-        }
-        return courseGrade;
+    public void setCourseName(String name) {
+        this.name = name;
     }
 
     public String getCourseName() {
         return name;
     }
 
-    public int getNumOfCategories() {
-        return num_of_categories;
-    }
+    public void inputCourseData(Scanner scanner) {
+        System.out.print("Enter course name: ");
+        this.name = scanner.next();
 
-    public Category[] getCourseCategories() {
-        return courseCategories;
-    }
-
-    public void addCourseCategory(Category category, int index) {
-        courseCategories[index] = category;
-    }
-
-    public void printCourse() {
-        System.out.println("Course Name: " + name);
-        System.out.println("Course Categories: ");
-        for(int i = 0; i < courseCategories.length; i++) {
-            if (courseCategories[i] != null) {
-                courseCategories[i].printCategory();
-            }
+        int numCategories = Main.getIntInput(scanner, "How many categories: ", 1, 10);
+        for (int i = 0; i < numCategories; i++) {
+            Category category = new Category();
+            category.inputCategoryData(scanner);
+            categories.add(category);
         }
     }
 
-    public void predictFutureGrade(String courseName) {
-        Scanner scanner = new Scanner(System.in);
-
-        System.out.println("Predict Future Grade for Course: " + getCourseName());
-        double predictedCourseGrade = 0.0;
+    public double calculateCourseGrade() {
+        double totalGrade = 0;
+        for (Category category : categories) {
+            totalGrade += category.calculateCategoryGrade() * (category.getCategoryWeight() / 100.0);
+        }
+        return totalGrade;
     }
 
-    public void editCourseInfo(String courseName) {
-        Scanner scanner = new Scanner(System.in);
+    public void predictFutureGrade(Scanner scanner) {
+        System.out.println("Predict Future Grade for Course: " + name);
 
-        // Display editing options
-        System.out.println("Edit Course: " + getCourseName());
-        System.out.println("1. Edit Course Name");
-        System.out.println("2. Edit Categories");
-        System.out.println("3. Edit Assignment Grades");
-        int option = Main.getIntInput(scanner, "Choose an option (1-3): ", 1, 3);
+        // Define the weight of quizzes for simulation purposes
+        double quizCategoryWeight = 3.0;  // Quizzes contribute 3% of the final grade
 
-        if(option == 1) {
-            System.out.print("Enter new course name: ");
-            setCourseName(scanner.nextLine());
-            System.out.println("Course name updated.");
+        // Prompt the user for three quiz grades
+        double[] quizGrades = new double[3];
+        System.out.println("Please enter grades for three quizzes.");
+        for (int i = 0; i < 3; i++) {
+            quizGrades[i] = Main.getDoubleInput(scanner, "Enter grade for quiz " + (i + 1) + ": ", 0, 100);
         }
-        else if(option == 2) {
-            System.out.println("Select category to edit:");
-            for (int i = 0; i < num_of_categories; i++) {
-                System.out.println((i+1) + ". " + courseCategories[i].getCategoryName());
-            }
-            int categoryIndex = Main.getIntInput(scanner, "Enter category number: ", 1, num_of_categories) - 1;
 
-            Category category = courseCategories[categoryIndex];
-            System.out.println("Editing Category: " + category.getCategoryName());
+        // Simulate the overall grade in each scenario (using each quiz grade one by one)
+        System.out.println("\nSimulated Overall Grades:");
+        for (int i = 0; i < quizGrades.length; i++) {
+            double quizGrade = quizGrades[i];
 
-            System.out.print("Enter new category name: ");
-            category.setCategoryName(scanner.nextLine());
-            double newWeight = Main.getDoubleInput(scanner, "Enter new category weight (0-100): ", 0, 100);
-            category.setCategoryWeight(newWeight);
-            System.out.println("Category updated.");
-        }
-        else if (option == 3) {
-            System.out.println("Select category to edit assignment grades:");
-            for (int i = 0; i < num_of_categories; i++) {
-                System.out.println((i+1) + ". " + courseCategories[i].getCategoryName());
-            }
-            int catIndex = Main.getIntInput(scanner, "Enter category number: ", 1, num_of_categories) - 1;
-            Category chosenCategory = courseCategories[catIndex];
+            // Calculate base course grade (without quiz)
+            double baseGrade = calculateCourseGrade();
 
-            for (int i = 0; i < chosenCategory.getNum_of_assignments(); i++) {
-                double newGrade = Main.getDoubleInput(scanner, "Enter new grade for assignment " + (i+1) + ": ", 0, 100);
-                chosenCategory.getAssignmentGrades()[i] = newGrade;
-            }
-            System.out.println("Assignment grades updated.");
-        }
-        else {
-            System.out.println("Invalid option.");
+            // Add the quiz grade as the only score in the quiz category (weighted at 3%)
+            double simulatedOverallGrade = baseGrade + (quizGrade * (quizCategoryWeight / 100.0));
+
+            // Display the result for this scenario
+            System.out.println("If Quiz Grade " + (i+1) + " is used " + quizGrade + ": Simulated Overall Grade = " + simulatedOverallGrade);
         }
     }
 
     public void saveCourseToCSV() {
-        String fileName = "courses.csv";
-        try (FileWriter writer = new FileWriter(fileName, true)) { // true to append
-            // Write course name and number of categories
+        try (FileWriter writer = new FileWriter("courses.csv", true)) {
             writer.write("Course Name: " + name + "\n");
-
-            // Write each category's details
-            for (Category category : courseCategories) {
-                if (category != null) {
-                    writer.write("Category Name: " + category.getCategoryName() + ", " +
-                            "Category Weight: " + category.getCategoryWeight() + ", " +
-                            "Number of Assignments: " + category.getNum_of_assignments() + ", ");
-
-                    // Write assignment grades as comma-separated values
-                    double[] grades = category.getAssignmentGrades();
-                    for (int i = 0; i < grades.length; i++) {
-                        writer.write("Assignment " + (i+1) + " grade: " + Double.toString(grades[i]));
-                        if (i < grades.length - 1){
-                            writer.write(", "); // Add comma between grades
-                        }
-                    }
-                    writer.write("\n"); // New line after each category
-                }
+            for (Category category : categories) {
+                writer.write("Category Name: " + category.getCategoryName() + ", Weight: " +
+                        category.getCategoryWeight() + ", Assignments: " + category.getNumAssignments() + "\n");
             }
-            writer.write("\n"); // Separate courses with a newline
-
-            System.out.println("Course saved");
+            writer.write("\n");
+            System.out.println("Course saved to CSV.");
         } catch (IOException e) {
-            System.out.println("An error occurred while saving the course to a CSV file.");
-            e.printStackTrace();
+            System.out.println("An error occurred while saving the course.");
         }
     }
 
-    // New static method to read and display saved courses
-    public void displaySavedCourses() {
-        String fileName = "courses.csv";
-        File file = new File(fileName);
+    public void printCourseDetails() {
+        System.out.println("Course Name: " + name);
+        //System.out.println("Categories:");
+        for (Category category : categories) {
+            category.printCategoryDetails(); // Call the method in Category to print its details
+        }
+    }
 
-        if (!file.exists()) {
-            System.out.println("No saved courses found.");
+    public void editCourseInfo(Scanner scanner) {
+        while (true) {
+            System.out.println("\nEditing Course: " + name);
+            System.out.println("1. Edit Course Name");
+            System.out.println("2. Edit Categories");
+            System.out.println("3. Edit Assignment Grades");
+            System.out.println("4. Return to Previous Menu");
+
+            int choice = Main.getIntInput(scanner, "Choose an option (1-4): ", 1, 4);
+
+            switch (choice) {
+                case 1:
+                    editCourseName(scanner);
+                    break;
+                case 2:
+                    editCategories(scanner);
+                    break;
+                case 3:
+                    editAssignmentGrades(scanner);
+                    break;
+                case 4:
+                    return; // Exit edit menu
+                default:
+                    System.out.println("Invalid choice. Please try again.");
+            }
+        }
+    }
+
+    private void editCourseName(Scanner scanner) {
+        System.out.print("Enter new course name: ");
+        this.name = scanner.nextLine();
+        System.out.println("Course name updated to: " + this.name);
+    }
+
+    private void editCategories(Scanner scanner) {
+        if (categories.isEmpty()) {
+            System.out.println("No categories to edit.");
             return;
         }
 
-        try (Scanner scanner = new Scanner(file)) {
-            System.out.println("Saved Courses:");
-            while (scanner.hasNextLine()) {
-                System.out.println(scanner.nextLine());
-            }
-        } catch (IOException e) {
-            System.out.println("An error occurred while reading the saved courses.");
-            e.printStackTrace();
+        System.out.println("Select a category to edit:");
+        for (int i = 0; i < categories.size(); i++) {
+            System.out.println((i + 1) + ". " + categories.get(i).getCategoryName());
         }
+
+        int categoryIndex = Main.getIntInput(scanner, "Enter category number to edit: ", 1, categories.size()) - 1;
+        Category category = categories.get(categoryIndex);
+
+        System.out.println("Editing Category: " + category.getCategoryName());
+        System.out.print("Enter new category name: ");
+        category.setCategoryName(scanner.next());
+
+        double newWeight = Main.getDoubleInput(scanner, "Enter new category weight (0-100): ", 0, 100);
+        category.setCategoryWeight(newWeight);
+
+        System.out.println("Category updated to: " + category.getCategoryName() + " with weight " + category.getCategoryWeight() + "%.");
+    }
+
+    private void editAssignmentGrades(Scanner scanner) {
+        if (categories.isEmpty()) {
+            System.out.println("No categories to edit assignment grades.");
+            return;
+        }
+
+        System.out.println("Select a category to edit assignment grades:");
+        for (int i = 0; i < categories.size(); i++) {
+            System.out.println((i + 1) + ". " + categories.get(i).getCategoryName());
+        }
+
+        int categoryIndex = Main.getIntInput(scanner, "Enter category number to edit assignments: ", 1, categories.size()) - 1;
+        Category category = categories.get(categoryIndex);
+
+        System.out.println("Editing assignment grades in Category: " + category.getCategoryName());
+        double[] assignmentGrades = category.getAssignmentGrades();
+
+        for (int i = 0; i < assignmentGrades.length; i++) {
+            assignmentGrades[i] = Main.getDoubleInput(scanner, "Enter new grade for assignment " + (i + 1) + ": ", 0, 100);
+        }
+
+        category.setAssignmentGrades(assignmentGrades);
+        System.out.println("Assignment grades updated for Category: " + category.getCategoryName());
     }
 }
